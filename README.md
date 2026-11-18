@@ -147,7 +147,7 @@ questions at STOP 1.
 | Models | all Opus | mostly Sonnet |
 | Tokens | 3.52 bn | 2.47 bn |
 | Tokens per ticket | about 235 m | about 51 m |
-| API-equivalent cost | | roughly 22 to 30 US dollars per ticket |
+| API-equivalent cost | roughly 90 to 110 US dollars per ticket | roughly 22 to 30 US dollars per ticket |
 
 Tokens per ticket fell by about four fifths between the runs; v2 moved builders and checkers to
 Sonnet and kept Opus for planning and finding. At the Epic 14 rate, a 40-ticket epic costs around a
@@ -172,6 +172,8 @@ for example, works only if each lane calls it.
 
 ## Known limits
 
+- **v3 has not run on a real epic yet.** v1 and v2 ran on real epics; this generic version is covered by
+  its tests (stubbed agents, a stubbed `gh`), not yet by a production run. Expect rough edges in your profile.
 - **One epic per machine today.** Each epic has its own stack, but the capacity guard and the suite
   lock are per machine, and two orchestrators would each think they own it.
 - **It needs Ready tickets.** Vague tickets come back as questions. That is the plan step doing its
