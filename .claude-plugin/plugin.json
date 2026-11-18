@@ -1,0 +1,9 @@
+{
+  "name": "ultra-epic",
+  "version": "3.0.0",
+  "description": "An attempt to automate the SDLC: one orchestrator session takes a Ready epic through plan, parallel test-first build, QA, review, security and harness gates recorded against commits, and stops twice for a human.",
+  "author": { "name": "IDST UK", "url": "https://idst.uk" },
+  "repository": "https://github.com/IDSTUK/ultra-epic",
+  "license": "MIT",
+  "keywords": ["sdlc", "delivery", "gates", "worktrees", "tdd", "code-review", "workflow"]
+}

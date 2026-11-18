@@ -1,0 +1,138 @@
+{
+  "_doc": "Copy to <repo>/.claude/delivery-profile.json and edit. Every key is described in profile/delivery-profile.md. Placeholders in commands: {epic} {wt} {file} {suite} {tags} {run_id} {port_<name>}.",
+  "name": "Example App",
+  "repo": "your-org/your-repo",
+
+  "git": {
+    "main_branch": "main",
+    "remote": "origin",
+    "epic_prefix": "epic/",
+    "lane_prefix": "lane/",
+    "worktree_parent": "..",
+    "links": ["node_modules"]
+  },
+
+  "paths": {
+    "epics": ".claude/epics",
+    "exempt": ["^\\.claude/epics/", "^\\.claude/handoffs/", "^docs/"],
+    "status_only": {
+      "files": ["tests/harness/scenarios.yaml"],
+      "line": "^[+-]\\s*\"?status\"?:\\s"
+    },
+    "scenarios": "tests/harness/scenarios.yaml"
+  },
+
+  "components": {
+    "API": {
+      "paths": ["api/"],
+      "unit": "cd api && npm test",
+      "build": "cd api && npm run build",
+      "harness_tags": ["api"],
+      "rig": true
+    },
+    "Web": {
+      "paths": ["web/"],
+      "unit": "cd web && npm test",
+      "build": "cd web && npm run build",
+      "harness_tags": ["web"],
+      "rig": false
+    }
+  },
+
+  "unit": {
+    "env": {"STRICT_MIGRATIONS": "1"}
+  },
+
+  "live": {
+    "description": "Production: the hosted database and the public site. No test, probe or harness run ever touches it.",
+    "markers": ["--allow-prod", "ALLOW_PROD=1", "prod\\.example\\.com"],
+    "local_url_prefix": "http://127.0.0.1"
+  },
+
+  "stack": {
+    "env_file": ".test-stack/test.env",
+    "ports": {"db": 55400, "functions": 8800},
+    "port_step": 10,
+    "slots": 20,
+    "up": "tools/stack/up.sh --db-port {port_db} --functions-port {port_functions}",
+    "down": "tools/stack/down.sh",
+    "check": "tools/stack/check.sh",
+    "free": "tools/stack/free.sh --db-port {port_db}",
+    "apply_migration": "tools/stack/apply.sh {file}",
+    "migrations": "db/migrations/",
+    "drift_check": "tools/stack/drift.sh"
+  },
+
+  "harness": {
+    "command": ". {wt}/.test-stack/test.env && python3 tests/harness/run.py --run-id {run_id} --no-skips {tags}",
+    "suite_command": ". {wt}/.test-stack/test.env && python3 tests/harness/run.py --no-skips --suite {suite}",
+    "summary": "tests/harness/results/{run_id}/summary.json",
+    "summary_must_equal": {"target": "local"},
+    "max_full_runs_per_lane": 2,
+    "exclusive_suites": ["e2e-mobile", "e2e-browser"]
+  },
+
+  "security": {
+    "commands": [],
+    "checklist": "docs/SECURITY-CHECKLIST.md",
+    "lenses": [
+      ["authz", "access control, row-level rules, privileged functions, cross-tenant reach"],
+      ["injection", "XSS sinks, SQL built from strings, URL or host built from input, open redirects"],
+      ["secrets-privacy", "secrets in code or logs, personal data in URLs or analytics, delete paths"]
+    ]
+  },
+
+  "review": {
+    "panel_skill": "panel-review",
+    "max_rounds": 3,
+    "lenses": [
+      ["correctness", "logic errors, wrong conditions, null paths, error handling, concurrency, time handling"],
+      ["acceptance", "each child issue's Given/When/Then against the code"],
+      ["data", "queries, migrations (idempotent, grants, order), offline and sync paths"],
+      ["tests", "tests that cannot fail, expected values copied from the code, missing negative cases"],
+      ["platform-rules", "the project's own coding rules (CLAUDE.md or CONTRIBUTING.md)"],
+      ["parity", "feature parity between clients where the project has more than one"]
+    ]
+  },
+
+  "plan": {
+    "max_tickets_per_lane": 5,
+    "max_block_share": 0.5
+  },
+
+  "capacity": {
+    "cap": 6,
+    "rig_cap": 4,
+    "min_idle_pct": 15,
+    "min_free_pct": 10,
+    "max_load_per_cpu": 2.0,
+    "min_disk_gb": 15,
+    "min_graphql": 2000
+  },
+
+  "board": {
+    "status_field": "Status",
+    "ready_statuses": ["In Testing", "Done"],
+    "check_children": false,
+    "set_field": null,
+    "component_label_prefix": "component:"
+  },
+
+  "models": {
+    "plan": "opus",
+    "find": "opus",
+    "build": "sonnet",
+    "check": "sonnet",
+    "sweep": "haiku"
+  },
+
+  "deploy": {
+    "steps": [
+      "Apply each approved migration to production in number order, one transaction each, and verify with a SELECT.",
+      "git -C {main} push origin main",
+      "Check the hosting provider's deploy status for each touched site."
+    ]
+  },
+
+  "gate_authors": []
+}

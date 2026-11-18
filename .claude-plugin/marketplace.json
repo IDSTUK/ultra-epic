@@ -1,0 +1,13 @@
+{
+  "name": "idst",
+  "description": "Skills from IDST UK",
+  "owner": { "name": "IDST UK", "url": "https://idst.uk" },
+  "plugins": [
+    {
+      "name": "ultra-epic",
+      "source": "./",
+      "description": "Take a Ready epic through every SDLC gate in one session, with two human stops.",
+      "version": "3.0.0"
+    }
+  ]
+}

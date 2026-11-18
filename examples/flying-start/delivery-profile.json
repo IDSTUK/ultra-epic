@@ -1,0 +1,160 @@
+{
+  "_doc": "The delivery profile of the project ultra-epic was built on: a sailing race-timing product with iOS and Android apps, a React admin site, a Supabase backend and serverless functions. Kept as a worked example. Repo name, project refs and paths are placeholders.",
+  "name": "Flying Start",
+  "repo": "your-org/flying-start",
+
+  "git": {
+    "main_branch": "main",
+    "remote": "origin",
+    "epic_prefix": "epic/",
+    "lane_prefix": "lane/",
+    "worktree_parent": "..",
+    "links": ["rc-admin/node_modules", "netlify/functions/node_modules", "website/node_modules", "node_modules",
+              "android/local.properties", "android/app/google-services.json"]
+  },
+
+  "paths": {
+    "epics": ".claude/epics",
+    "exempt": ["^\\.claude/epics/", "^\\.claude/handoffs/", "^docs/"],
+    "status_only": {
+      "files": ["tests/harness/scenarios.yaml", "fs-admin/src/app/dashboard/test-harness/scenarios.json"],
+      "line": "^[+-]\\s*\"?status\"?:\\s"
+    },
+    "scenarios": "tests/harness/scenarios.yaml",
+    "scenarios_export": "python3 tests/harness/scenarios_to_json.py"
+  },
+
+  "components": {
+    "iOS Race Officer": {
+      "paths": ["ios/RaceOfficer/", "Packages/RaceCommitteeKit/"],
+      "unit": "cd Packages/RaceCommitteeKit && swift test",
+      "build": "xcodebuild -scheme RaceOfficer -destination 'generic/platform=iOS Simulator' build",
+      "harness_tags": ["ro"],
+      "rig": true
+    },
+    "Android Sailor": {
+      "paths": ["android/"],
+      "unit": "cd android && ./gradlew :app:testDebugUnitTest",
+      "build": "cd android && ./gradlew :app:assembleDebug",
+      "harness_tags": ["android"],
+      "rig": false
+    },
+    "RC Web App": {
+      "paths": ["rc-admin/"],
+      "unit": "cd rc-admin && npm test",
+      "build": "cd rc-admin && npm run build",
+      "harness_tags": ["rc-web"],
+      "rig": false
+    },
+    "Backend & Sync": {
+      "paths": ["supabase/", "netlify/functions/"],
+      "unit": ". .localstack/harness.env && python3 tests/harness/run.py --tier 1 --tag backend",
+      "harness_tags": ["backend"],
+      "rig": true
+    }
+  },
+
+  "unit": {
+    "env": {"HARNESS_STRICT_MIGRATIONS": "1", "HARNESS_KEEP_DEVICES": "1"}
+  },
+
+  "live": {
+    "description": "the hosted Supabase project and the production Netlify sites",
+    "markers": ["--allow-prod", "HARNESS_ALLOW_PROD", "\\.supabase\\.co", "netlify\\.app"],
+    "local_url_prefix": "http://127.0.0.1"
+  },
+
+  "stack": {
+    "env_file": ".localstack/harness.env",
+    "ports": {"api": 54321, "db": 54322, "functions": 8899},
+    "port_step": 10,
+    "slots": 20,
+    "lane_port_base": 5190,
+    "up": "tools/localstack/up.sh --api-port {port_api} --db-port {port_db} && tools/localstack/functions.sh --port {port_functions}",
+    "down": "tools/localstack/functions.sh stop && (cd .localstack && supabase stop)",
+    "check": ". .localstack/harness.env && docker exec supabase_db_<project> psql -U postgres -tAc 'select 1'",
+    "apply_migration": "tools/localstack/apply.sh {file}",
+    "migrations": "supabase/migrations/",
+    "drift_check": "python3 tools/localstack/drift.py"
+  },
+
+  "harness": {
+    "command": ". {wt}/.localstack/harness.env && python3 tests/harness/run.py --run-id {run_id} --jobs 4 --no-skips {tags}",
+    "suite_command": ". {wt}/.localstack/harness.env && python3 tests/harness/run.py --no-skips --suite {suite}",
+    "tier0_command": "python3 tests/harness/run.py --tier 0",
+    "summary": "tests/harness/results/{run_id}/summary.json",
+    "summary_must_equal": {"target": "local", "missing_migrations": [], "extra_migrations": []},
+    "max_full_runs_per_lane": 2,
+    "exclusive_suites": ["ro-v10", "sailor-flow", "f5-pair", "rc-admin-playwright"]
+  },
+
+  "security": {
+    "commands": ["python3 tools/rls_gate.py --local"],
+    "checklist": "docs/SECURITY-AUDIT-CHECKLIST.md",
+    "lenses": [
+      ["authz", "RLS, SECURITY DEFINER functions, anon reach, cross-club access, officer-only RPCs, new tables without GRANTs or RLS"],
+      ["injection", "XSS sinks, SQL built from strings, URL or host built from input, open redirects, unsafe deep links, function input"],
+      ["secrets-privacy", "secrets in code or logs, personal data in URLs or analytics, email or push to real addresses, delete paths, payment webhooks"]
+    ]
+  },
+
+  "review": {
+    "panel_skill": "panel-review",
+    "max_rounds": 3,
+    "lenses": [
+      ["correctness", "logic errors, wrong conditions, off-by-one, nil/null paths, error handling, concurrency, timer and clock handling"],
+      ["acceptance", "each child issue's Given/When/Then against the code"],
+      ["parity", "iOS vs Android feature, UI and UX parity for every user-visible change; the web app where it shares the flow"],
+      ["data-sync", "Supabase queries, sync, realtime, migrations (IF NOT EXISTS, GRANTs, order), enum/CHECK values, offline paths"],
+      ["tests", "tests that cannot fail, expected values copied from the code, missing negative cases, drivers whose checks do not match the scenario"],
+      ["platform-rules", "SwiftUI state in timer closures, Picker bindings, Compose recomposition, React effects, strings not in the string catalogues"]
+    ]
+  },
+
+  "plan": {
+    "max_tickets_per_lane": 5,
+    "max_block_share": 0.5
+  },
+
+  "capacity": {
+    "cap": 6,
+    "rig_cap": 4,
+    "min_idle_pct": 15,
+    "min_free_pct": 10,
+    "max_load_per_cpu": 2.0,
+    "min_disk_gb": 15,
+    "min_graphql": 2000,
+    "device_rules": "Boot a simulator only with `sh examples/flying-start/capacity_sim.sh boot <udid>` (one boot at a time across all agents: parallel boots silently fail). Create your own simulator, named <epic>-<lane>, and delete it at the end. Never shut down all simulators."
+  },
+
+  "board": {
+    "status_field": "Status",
+    "ready_statuses": ["In Testing", "Done"],
+    "check_children": true,
+    "set_field": "python3 ~/.claude/skills/backlog/scripts/board.py set {n} {field} {value}",
+    "snapshot": "python3 ~/.claude/skills/backlog/scripts/board.py snapshot --out {file}",
+    "component_label_prefix": "component:"
+  },
+
+  "models": {
+    "plan": "opus",
+    "find": "opus",
+    "build": "sonnet",
+    "check": "sonnet",
+    "sweep": "haiku"
+  },
+
+  "deploy": {
+    "steps": [
+      "Fetch; the remote main must still equal base_main, else merge it into the epic again and re-run the stale gates.",
+      "Merge the epic onto main locally with the default message; the merge tree must equal the epic head.",
+      "Apply each approved migration to the hosted database in number order, one transaction each, and verify with a SELECT. No test or probe on live.",
+      "Regenerate the database types from live and check only the schema delta changed.",
+      "Run the deploy gates (string catalogue drift, RLS gate) in the main checkout.",
+      "git push origin main (the guard checks the gates once more).",
+      "Check the hosting provider's deploy status for each touched site. Store submissions stay with the human."
+    ]
+  },
+
+  "gate_authors": []
+}
